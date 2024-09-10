@@ -1,6 +1,7 @@
 import localFont from "next/font/local";
 import "./globals.css";
 import { TaskProvider } from "@/contexts/TaskContext";
+import RegisterServiceWorker from "./register-service-worker";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -28,9 +29,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <TaskProvider>
-          {children}
-        </TaskProvider>
+          <TaskProvider>
+                {children}
+            <RegisterServiceWorker/>
+          </TaskProvider>
       </body>
     </html>
   );
