@@ -18,24 +18,54 @@ export const TaskProvider = ({ children }) => {
 
     useEffect(() => {
         const loadTasks = async () => {
-            const tasksFromDB = await getTasks();
-            setTasks(tasksFromDB);
-
-            // Sincronizar com Firebase se estiver online
-            if (navigator.onLine) {
-                const tasksFromFirestore = await getTasksFromFirestore();
-                // Implementar lógica para mesclar tarefas do Firebase com tarefas locais
-                // Por exemplo, você pode decidir como mesclar ou substituir tarefas
+            try {
+                // Obter tarefas do IndexedDB
+                const tasksFromDB = await getTasks();
+                
+                // Obter tarefas do Firebase se estiver online
+                if (navigator.onLine) {
+                    const tasksFromFirestore = await getTasksFromFirestore();
+                    
+                    // Mesclar tarefas do IndexedDB com Firebase
+                    // Criação de um Map para garantir que não haja duplicações
+                    const tasksMap = new Map();
+                    
+                    tasksFromDB.forEach(task => tasksMap.set(task.id, task));
+                    tasksFromFirestore.forEach(task => tasksMap.set(task.id, task));
+                    
+                    // Converter o Map de volta para um array
+                    const mergedTasks = Array.from(tasksMap.values());
+                    
+                    // Atualizar o estado com as tarefas mescladas
+                    setTasks(mergedTasks);
+                    
+                    // Atualizar IndexedDB com as tarefas do Firestore
+                    await Promise.all(mergedTasks.map(task => addTask(task)));
+                } else {
+                    // Atualizar o estado com as tarefas do IndexedDB
+                    setTasks(tasksFromDB);
+                }
+            } catch (error) {
+                console.error("Erro ao carregar e mesclar tarefas:", error);
             }
         };
+
         loadTasks();
     }, []);
 
     const addNewTask = async (task) => {
-        await addTask(task);
-        await addTaskToFirestore(task); // Salvar no Firebase
-        const tasksFromDB = await getTasks();
-        setTasks(tasksFromDB);
+        try {
+            if (navigator.onLine) {
+                await addTaskToFirestore(task); // Salvar no Firebase
+            } else {
+                await addTask(task); // Adicionar ao IndexedDB
+            }
+            
+            // Recarregar e mesclar tarefas após adicionar uma nova tarefa
+            await loadTasks();
+        } catch (error) {
+            console.error("Erro ao adicionar nova tarefa:", error);
+        }
     };
 
     return (
